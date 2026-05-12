@@ -37,12 +37,30 @@ function loadAmapScript() {
   });
 }
 
+async function hydrateRuntimeConfig() {
+  if (window.AMAP_JS_KEY) return;
+  try {
+    const res = await fetch("./api/config", { cache: "no-store" });
+    if (!res.ok) return;
+    const config = await res.json();
+    if (config.securityJsCode) {
+      window._AMapSecurityConfig = { securityJsCode: config.securityJsCode };
+    }
+    if (config.amapKey) {
+      window.AMAP_JS_KEY = config.amapKey;
+    }
+  } catch (err) {
+    // GitHub Pages has no API route; the static analytical map remains available.
+  }
+}
+
 async function init() {
   try {
     const res = await fetch("./data/poi_visual_data.json");
     dataset = await res.json();
     state.categories = new Set(Object.keys(dataset.meta.categorySummary));
     buildControls();
+    await hydrateRuntimeConfig();
     try {
       await loadAmapScript();
       buildMap();
