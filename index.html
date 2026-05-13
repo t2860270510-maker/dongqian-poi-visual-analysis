@@ -18,34 +18,60 @@
           <p>业态 · 活力 · 服务 · 到达</p>
         </div>
       </header>
+
       <section class="control-block">
-        <h2>专题模式</h2>
-        <div class="topic-grid" id="topicGrid"></div>
+        <h2>显示模式</h2>
+        <div class="mode-switch" id="modeSwitch">
+          <button type="button" class="active" data-mode="filter">POI筛选模式</button>
+          <button type="button" data-mode="analysis">图纸专题模式</button>
+        </div>
       </section>
-      <section class="control-block">
-        <h2>圈层筛选</h2>
-        <div class="check-list" id="rangeFilters"></div>
-      </section>
-      <section class="control-block category-block">
-        <h2>业态筛选</h2>
-        <div class="category-list" id="categoryFilters"></div>
-      </section>
-      <section class="control-block display-row">
-        <label><input type="checkbox" id="pointsToggle" checked /> 点位</label>
-        <label><input type="checkbox" id="heatToggle" /> 热力</label>
-        <button id="resetBtn" type="button">重置视图</button>
-      </section>
+
+      <div id="filterControls">
+        <section class="control-block">
+          <h2>专题筛选</h2>
+          <div class="topic-grid" id="topicGrid"></div>
+        </section>
+        <section class="control-block">
+          <h2>圈层筛选</h2>
+          <div class="check-list" id="rangeFilters"></div>
+        </section>
+        <section class="control-block category-block">
+          <h2>业态筛选</h2>
+          <div class="category-list" id="categoryFilters"></div>
+        </section>
+        <section class="control-block display-row">
+          <label><input type="checkbox" id="pointsToggle" checked /> 点位</label>
+          <label><input type="checkbox" id="heatToggle" /> 热力</label>
+          <button id="resetBtn" type="button">重置视图</button>
+        </section>
+      </div>
+
+      <div id="analysisControls" hidden>
+        <section class="control-block">
+          <h2>图纸专题</h2>
+          <div class="analysis-list" id="analysisList"></div>
+        </section>
+        <section class="control-block">
+          <h2>专题说明</h2>
+          <p class="mode-note" id="analysisNote"></p>
+        </section>
+      </div>
     </aside>
 
     <section class="map-stage">
       <div id="map"></div>
       <div id="mapLoading" class="map-loading">加载高德底图与 POI 数据...</div>
+      <div class="map-tools">
+        <button id="screenshotBtn" type="button">导出当前地图 PNG</button>
+        <span id="screenshotStatus"></span>
+      </div>
       <div class="map-legend" id="legend"></div>
     </section>
 
     <aside class="panel panel-right">
       <section class="stat-hero">
-        <span>当前筛选</span>
+        <span id="statModeLabel">当前筛选</span>
         <strong id="currentCount">0</strong>
         <small id="currentShare">样本占比 0%</small>
       </section>
@@ -56,7 +82,7 @@
         <div><span>主导业态</span><strong id="metricTop">-</strong></div>
       </section>
       <section class="control-block">
-        <h2>业态占比</h2>
+        <h2 id="barTitle">业态占比</h2>
         <div id="barList" class="bar-list"></div>
       </section>
       <section class="control-block">
@@ -64,8 +90,8 @@
         <p id="insightText" class="insight-text"></p>
       </section>
       <section class="control-block">
-        <h2>图纸导出建议</h2>
-        <ul class="tips">
+        <h2>图纸表达</h2>
+        <ul class="tips" id="drawingTips">
           <li>截图当前专题作为底图点位表达。</li>
           <li>结合 figures 文件夹中的 PNG/SVG 做汇报排版。</li>
           <li>核心区建议叠加街巷、入口、停车与活力节点。</li>

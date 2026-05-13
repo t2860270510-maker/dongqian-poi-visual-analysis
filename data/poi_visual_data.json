@@ -1294,6 +1294,348 @@
       "未分类": "#9CA3AF"
     }
   },
+  "analysisViews": [
+    {
+      "id": "fig01",
+      "title": "fig01 研究范围总图",
+      "shortTitle": "研究范围",
+      "description": "显示核心街区、500m/1000m圈层、全部POI和关键地标，用于说明研究范围与样本基础。",
+      "figure": "figures/fig01_study_area_overview.png",
+      "filters": {},
+      "showPoints": true,
+      "showHeat": false,
+      "colorBy": "category",
+      "judgement": "东前街核心区位于高密 POI 环境中心，适合作为老城商业与公共服务复合分析的起点。",
+      "drawingHint": "建议作为汇报开篇底图，叠加研究范围、样本点和核心地标。",
+      "legend": [
+        {
+          "label": "核心街区",
+          "color": "#E5533D"
+        },
+        {
+          "label": "500m影响圈",
+          "color": "#111827"
+        },
+        {
+          "label": "1000m周边圈",
+          "color": "#94A3B8"
+        },
+        {
+          "label": "POI样本",
+          "color": "#2C9F7A"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "label",
+          "lon": 120.823173,
+          "lat": 29.587103,
+          "title": "嵊州老城·东前街",
+          "body": "核心商业街区",
+          "color": "#E5533D"
+        },
+        {
+          "type": "label",
+          "lon": 120.82344,
+          "lat": 29.587448,
+          "title": "东前街地下停车场",
+          "body": "主要到达与换乘节点",
+          "color": "#5A6ACF"
+        },
+        {
+          "type": "label",
+          "lon": 120.823632,
+          "lat": 29.587196,
+          "title": "核心分析中心",
+          "body": "500m/1000m圈层圆心",
+          "color": "#111827"
+        }
+      ]
+    },
+    {
+      "id": "fig02",
+      "title": "fig02 圈层业态结构图",
+      "shortTitle": "圈层业态",
+      "description": "按圈层颜色表达POI，并在统计面板比较核心区、500m、1000m的功能结构。",
+      "figure": "figures/fig02_function_mix_by_range.png",
+      "filters": {},
+      "showPoints": true,
+      "showHeat": false,
+      "colorBy": "range",
+      "judgement": "核心区样本较少但消费型业态集中，500m和1000m圈层提供更完整的生活服务与公共服务支撑。",
+      "drawingHint": "适合放在功能混合度分析中，说明核心街区与周边生活圈的差异。",
+      "legend": [
+        {
+          "label": "核心街区",
+          "color": "#E5533D"
+        },
+        {
+          "label": "500m影响圈",
+          "color": "#D79B19"
+        },
+        {
+          "label": "1000m周边圈",
+          "color": "#2C9F7A"
+        }
+      ]
+    },
+    {
+      "id": "fig03",
+      "title": "fig03 POI 分类点图",
+      "shortTitle": "分类点图",
+      "description": "按主功能分类着色，突出餐饮、购物、生活服务、公共服务等业态的空间分异。",
+      "figure": "figures/fig03_function_category_map.png",
+      "filters": {},
+      "showPoints": true,
+      "showHeat": false,
+      "colorBy": "category",
+      "judgement": "购物、餐饮、生活服务构成主导结构，可继续叠加街巷和建筑界面判断活力段。",
+      "drawingHint": "适合作为业态结构和功能混合度的主图。"
+    },
+    {
+      "id": "fig04",
+      "title": "fig04 商业活力热力图",
+      "shortTitle": "商业活力",
+      "description": "提取餐饮、购物、休闲娱乐、住宿，表达消费型活力和夜间活动潜力。",
+      "figure": "figures/fig04_commercial_vitality_heatmap.png",
+      "filters": {
+        "groups": [
+          "commercial_vitality"
+        ]
+      },
+      "showPoints": true,
+      "showHeat": true,
+      "colorBy": "category",
+      "judgement": "商业活力高度依赖餐饮和购物集聚，适合围绕主街、路口和停车到达点组织夜间经济节点。",
+      "drawingHint": "适合叠加夜间经济、步行商业主轴和公共空间节点。",
+      "legend": [
+        {
+          "label": "餐饮",
+          "color": "#E5533D"
+        },
+        {
+          "label": "购物",
+          "color": "#D79B19"
+        },
+        {
+          "label": "休闲娱乐",
+          "color": "#B64FA3"
+        },
+        {
+          "label": "住宿",
+          "color": "#1E88E5"
+        },
+        {
+          "label": "活力热力",
+          "color": "#8B1E16"
+        }
+      ]
+    },
+    {
+      "id": "fig05",
+      "title": "fig05 公共服务完整度图",
+      "shortTitle": "公共服务",
+      "description": "提取医疗、教育文化、政府公共服务、公共设施、公厕和停车，表达服务分布与补点方向。",
+      "figure": "figures/fig05_public_service_map.png",
+      "filters": {
+        "groups": [
+          "public_service"
+        ],
+        "categories": [
+          "停车场"
+        ]
+      },
+      "showPoints": true,
+      "showHeat": false,
+      "colorBy": "category",
+      "judgement": "公共服务在周边圈层更完整，核心街区内部应重点补足公厕、休憩、导向和社区服务设施。",
+      "drawingHint": "适合做服务半径图和公共设施缺口诊断。",
+      "annotations": [
+        {
+          "type": "circle",
+          "lon": 120.823632,
+          "lat": 29.587196,
+          "radius": 220,
+          "title": "核心区公共服务补足带",
+          "color": "#2F8EA6"
+        }
+      ]
+    },
+    {
+      "id": "fig06",
+      "title": "fig06 交通与到达性图",
+      "shortTitle": "交通到达",
+      "description": "提取停车场、交通节点、公交/道路/路口和出入口，标注主要到达节点和慢行衔接。",
+      "figure": "figures/fig06_arrival_transport_map.png",
+      "filters": {
+        "groups": [
+          "mobility"
+        ],
+        "categories": [
+          "停车场",
+          "交通设施",
+          "交通节点"
+        ]
+      },
+      "showPoints": true,
+      "showHeat": false,
+      "colorBy": "category",
+      "judgement": "地下停车场与周边路口是游客到达的主要转换点，需要强化到主街的慢行导向。",
+      "drawingHint": "适合叠加停车换乘、入口节点和步行导视系统。",
+      "annotations": [
+        {
+          "type": "line",
+          "path": [
+            [
+              120.82344,
+              29.587448
+            ],
+            [
+              120.8237,
+              29.58728
+            ],
+            [
+              120.8242,
+              29.58739
+            ]
+          ],
+          "title": "停车到主街慢行导向",
+          "color": "#5A6ACF"
+        },
+        {
+          "type": "label",
+          "lon": 120.82344,
+          "lat": 29.587448,
+          "title": "停车换乘节点",
+          "body": "地下停车场/出入口",
+          "color": "#5A6ACF"
+        }
+      ]
+    },
+    {
+      "id": "fig07",
+      "title": "fig07 旅游商业与本地生活关系图",
+      "shortTitle": "文旅/本地",
+      "description": "将文旅消费型POI与居民日常型POI分层表达，判断商业化强度和生活服务保留程度。",
+      "figure": "figures/fig07_tourism_vs_daily_life.png",
+      "filters": {
+        "groups": [
+          "tourism",
+          "daily_life"
+        ]
+      },
+      "showPoints": true,
+      "showHeat": false,
+      "colorBy": "visitorDaily",
+      "judgement": "游客消费型POI明显多于文旅景点本身，街区更新应避免只做商业消费，保留居民日常服务。",
+      "drawingHint": "适合用于讨论旅游商业化与本地生活平衡。",
+      "legend": [
+        {
+          "label": "文旅消费",
+          "color": "#D79B19"
+        },
+        {
+          "label": "居民日常",
+          "color": "#2C9F7A"
+        },
+        {
+          "label": "其他",
+          "color": "#9CA3AF"
+        }
+      ]
+    },
+    {
+      "id": "fig08",
+      "title": "fig08 问题诊断与设计策略图",
+      "shortTitle": "问题策略",
+      "description": "在高德底图上叠加功能补足、慢行组织、公共空间节点、文化展示和夜间经济策略。",
+      "figure": "figures/fig08_problem_strategy_diagram.png",
+      "filters": {
+        "groups": [
+          "commercial_vitality",
+          "public_service",
+          "mobility",
+          "tourism"
+        ]
+      },
+      "showPoints": true,
+      "showHeat": false,
+      "colorBy": "group",
+      "judgement": "策略应围绕主街活力、停车换乘、公共设施补点和文化叙事节点形成连续的老城更新路径。",
+      "drawingHint": "适合作为问题诊断到城市设计策略的综合图。",
+      "legend": [
+        {
+          "label": "商业活力",
+          "color": "#E5533D"
+        },
+        {
+          "label": "公共服务",
+          "color": "#2F8EA6"
+        },
+        {
+          "label": "交通到达",
+          "color": "#5A6ACF"
+        },
+        {
+          "label": "文旅消费",
+          "color": "#D79B19"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "line",
+          "path": [
+            [
+              120.8221,
+              29.58678
+            ],
+            [
+              120.8235,
+              29.58716
+            ],
+            [
+              120.82505,
+              29.58748
+            ]
+          ],
+          "title": "东前街慢行活力主轴",
+          "color": "#E5533D"
+        },
+        {
+          "type": "circle",
+          "lon": 120.823632,
+          "lat": 29.587196,
+          "radius": 180,
+          "title": "公共空间节点优化",
+          "color": "#2F8EA6"
+        },
+        {
+          "type": "label",
+          "lon": 120.8242,
+          "lat": 29.58739,
+          "title": "夜间经济节点",
+          "body": "餐饮/休闲消费集聚",
+          "color": "#E5533D"
+        },
+        {
+          "type": "label",
+          "lon": 120.8227,
+          "lat": 29.58686,
+          "title": "街巷更新入口",
+          "body": "导视与慢行衔接",
+          "color": "#5A6ACF"
+        },
+        {
+          "type": "label",
+          "lon": 120.82465,
+          "lat": 29.58772,
+          "title": "文化展示节点",
+          "body": "地方餐饮、文创、老城记忆",
+          "color": "#D79B19"
+        }
+      ]
+    }
+  ],
   "pois": [
     {
       "id": "B0IATO3QQV",
