@@ -34,6 +34,35 @@ const VISITOR_COLORS = {
   "其他": "#9CA3AF"
 };
 
+const DEEP_TOPICS = [
+  { id: "district", label: "商圈影响", description: "场地内、东北商圈、西南商圈的业态结构对比。", dimension: "primaryCategory", categories: null, insight: "东北商圈承担现代综合消费和年轻客流，西南商圈偏传统市场和日常供给，场地内应成为两者之间的老城体验转换界面。" },
+  { id: "catering", label: "餐饮深拆", description: "按小吃快餐、地方风味、正餐聚餐、咖啡甜品等拆分餐饮。", dimension: "cateringSubCategory", categories: ["餐饮"], insight: "餐饮不宜只看数量，地方风味、小吃快餐、咖啡甜品和茶饮更适合组织成连续街道活力界面。" },
+  { id: "shopping", label: "购物深拆", description: "按服装零售、传统小商品、便利零售、文创零售等拆分购物。", dimension: "shoppingSubCategory", categories: ["购物"], insight: "东北商圈偏服装和体验零售，西南商圈偏传统小商品，场地内适合补入文创、书店、特产和低门槛便民零售。" },
+  { id: "consumption", label: "消费层级", description: "按基础便民、大众日常、社交聚餐、品质体验、文旅特色表达消费结构。", dimension: "consumptionLevel", categories: ["餐饮", "购物", "休闲娱乐", "住宿", "文旅景点"], insight: "基础便民和大众日常是老城底盘，品质体验和文旅特色应作为提升项嵌入，而不是替代居民日常。" },
+  { id: "strategy", label: "设计策略", description: "按保留、提升、补充、整合、导流联动表达更新动作。", dimension: "designAction", categories: null, insight: "场地内要保留日常、提升地方风味与文化休闲，东北/西南商圈则通过导流联动支撑客流转化。" }
+];
+
+const DEEP_DIMENSIONS = [
+  { id: "primaryCategory", label: "一级业态", field: "category" },
+  { id: "cateringSubCategory", label: "餐饮子类型", field: "subCategory", categories: ["餐饮"] },
+  { id: "shoppingSubCategory", label: "购物子类型", field: "subCategory", categories: ["购物"] },
+  { id: "consumptionLevel", label: "消费层级", field: "consumptionLevel" },
+  { id: "customerType", label: "客群类型", field: "customerType" },
+  { id: "designAction", label: "设计动作", field: "designAction" }
+];
+
+const DISTRICT_COLORS = {
+  "场地内": "#E5533D",
+  "东北商圈": "#5A6ACF",
+  "西南商圈": "#2C9F7A",
+  "非重点商圈": "#9CA3AF"
+};
+
+const FALLBACK_PALETTE = [
+  "#E5533D", "#D79B19", "#2C9F7A", "#5A6ACF", "#B64FA3", "#1E88E5",
+  "#7E57C2", "#D94F70", "#4E7D3A", "#2F8EA6", "#8A6D3B", "#6C7A89"
+];
+
 let dataset;
 let map;
 let mapMode = "amap";
@@ -41,6 +70,7 @@ let heatmap;
 let markers = [];
 let polygons = [];
 let analysisOverlays = [];
+let infoWindow;
 let svgRoot;
 let staticPopup;
 let staticProject;
@@ -50,6 +80,10 @@ let state = {
   mode: "filter",
   topic: "all",
   activeViewId: "fig01",
+  deepTopic: "district",
+  deepDimension: "primaryCategory",
+  deepDistricts: new Set(["场地内", "东北商圈", "西南商圈"]),
+  deepReviewOnly: false,
   ranges: new Set(["core_polygon", "buffer_500m", "buffer_1000m"]),
   categories: new Set(),
   showPoints: true,
@@ -140,6 +174,7 @@ function buildControls() {
   buildRangeControls();
   buildCategoryControls();
   buildAnalysisControls();
+  buildDeepControls();
   document.getElementById("pointsToggle").addEventListener("change", event => {
     state.showPoints = event.target.checked;
     render();
@@ -159,6 +194,7 @@ function buildModeSwitch() {
     const btn = event.target.closest("[data-mode]");
     if (!btn) return;
     state.mode = btn.dataset.mode;
+    closeMapPopup();
     updateControlVisibility();
     render();
   });
@@ -231,15 +267,77 @@ function buildAnalysisControls() {
   });
 }
 
+function buildDeepControls() {
+  const topicList = document.getElementById("deepTopicList");
+  topicList.innerHTML = DEEP_TOPICS.map(topic => `
+    <button class="analysis-btn ${topic.id === state.deepTopic ? "active" : ""}" data-deep-topic="${topic.id}" type="button">
+      <strong>${escapeHtml(topic.label)}</strong>
+      <span>${escapeHtml(topic.description)}</span>
+    </button>`).join("");
+  topicList.addEventListener("click", event => {
+    const btn = event.target.closest("[data-deep-topic]");
+    if (!btn) return;
+    state.deepTopic = btn.dataset.deepTopic;
+    const topic = activeDeepTopic();
+    state.deepDimension = topic.dimension;
+    document.querySelectorAll("[data-deep-topic]").forEach(b => b.classList.toggle("active", b.dataset.deepTopic === state.deepTopic));
+    document.querySelectorAll("[data-deep-dimension]").forEach(b => b.classList.toggle("active", b.dataset.deepDimension === state.deepDimension));
+    fitDeepView();
+    render();
+  });
+
+  const districtFilters = document.getElementById("districtFilters");
+  const districts = ["场地内", "东北商圈", "西南商圈", "非重点商圈"];
+  districtFilters.innerHTML = districts.map(district => `
+    <label class="check-row">
+      <input type="checkbox" value="${district}" ${state.deepDistricts.has(district) ? "checked" : ""} />
+      <span class="swatch" style="background:${DISTRICT_COLORS[district] || "#9CA3AF"}"></span>
+      <span>${district}</span>
+      <span class="count">${dataset.meta.deepSummary?.districtTotals?.[district] || 0}</span>
+    </label>`).join("");
+  districtFilters.addEventListener("change", event => {
+    if (event.target.type !== "checkbox") return;
+    event.target.checked ? state.deepDistricts.add(event.target.value) : state.deepDistricts.delete(event.target.value);
+    fitDeepView();
+    render();
+  });
+
+  const dimensionGrid = document.getElementById("deepDimensionGrid");
+  dimensionGrid.innerHTML = DEEP_DIMENSIONS.map(dimension => `
+    <button class="dimension-btn ${dimension.id === state.deepDimension ? "active" : ""}" data-deep-dimension="${dimension.id}" type="button">
+      ${escapeHtml(dimension.label)}
+    </button>`).join("");
+  dimensionGrid.addEventListener("click", event => {
+    const btn = event.target.closest("[data-deep-dimension]");
+    if (!btn) return;
+    state.deepDimension = btn.dataset.deepDimension;
+    document.querySelectorAll("[data-deep-dimension]").forEach(b => b.classList.toggle("active", b.dataset.deepDimension === state.deepDimension));
+    render();
+  });
+
+  const reviewOnlyToggle = document.getElementById("deepReviewOnlyToggle");
+  reviewOnlyToggle.checked = state.deepReviewOnly;
+  document.getElementById("deepReviewTotal").textContent = dataset.meta.deepSummary?.manualReviewTotal || 0;
+  reviewOnlyToggle.addEventListener("change", event => {
+    state.deepReviewOnly = event.target.checked;
+    fitDeepView();
+    render();
+  });
+}
+
 function updateControlVisibility() {
   document.querySelectorAll("#modeSwitch [data-mode]").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.mode === state.mode);
   });
   document.getElementById("filterControls").hidden = state.mode !== "filter";
   document.getElementById("analysisControls").hidden = state.mode !== "analysis";
+  document.getElementById("deepControls").hidden = state.mode !== "deep";
+  const reviewOnlyToggle = document.getElementById("deepReviewOnlyToggle");
+  if (reviewOnlyToggle) reviewOnlyToggle.checked = state.deepReviewOnly;
   const view = activeView();
   document.getElementById("analysisNote").textContent = view ? view.description : "";
   document.getElementById("screenshotStatus").textContent = "";
+  if (state.mode === "deep") fitDeepView();
 }
 
 function buildMap() {
@@ -320,6 +418,16 @@ function drawStaticBase() {
   base.insertAdjacentHTML("beforeend", ring(dataset.meta.buffer1000, "#94A3B8", 2));
   base.insertAdjacentHTML("beforeend", ring(dataset.meta.buffer500, "#475569", 2.4));
   base.insertAdjacentHTML("beforeend", `<polygon points="${polygonPoints}" fill="#E5533D22" stroke="#B83B2B" stroke-width="3.2" filter="url(#softShadow)"/>`);
+  Object.entries(dataset.meta.businessDistrictPolygons || {}).forEach(([name, polygon]) => {
+    const points = polygon.map(([lon, lat]) => staticProject(lon, lat).map(v => v.toFixed(1)).join(",")).join(" ");
+    const color = DISTRICT_COLORS[name] || "#5A6ACF";
+    const [lx, ly] = staticProject(
+      polygon.reduce((sum, p) => sum + p[0], 0) / polygon.length,
+      polygon.reduce((sum, p) => sum + p[1], 0) / polygon.length
+    );
+    base.insertAdjacentHTML("beforeend", `<polygon points="${points}" fill="${color}24" stroke="${color}" stroke-width="2.6" stroke-dasharray="8 6"/>`);
+    labels.insertAdjacentHTML("beforeend", `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="13" font-weight="800" fill="${color}">${escapeHtml(name)}</text>`);
+  });
   base.insertAdjacentHTML("beforeend", `<circle cx="${center[0]}" cy="${center[1]}" r="7" fill="#111827"/><line x1="${center[0]-16}" y1="${center[1]}" x2="${center[0]+16}" y2="${center[1]}" stroke="#111827" stroke-width="2"/><line x1="${center[0]}" y1="${center[1]-16}" x2="${center[0]}" y2="${center[1]+16}" stroke="#111827" stroke-width="2"/>`);
   labels.insertAdjacentHTML("beforeend", `<text x="46" y="54" font-size="24" font-weight="800" fill="#111827">东前街 POI 静态分析地图</text><text x="46" y="82" font-size="13" fill="#5f6b7a">无高德 Key 时自动展示，可筛选专题、圈层与业态</text>`);
   labels.insertAdjacentHTML("beforeend", `<text x="${center[0]+18}" y="${center[1]+28}" font-size="12" fill="#111827">核心分析中心</text><text x="1030" y="104" font-size="13" fill="#64748B">1000m</text><text x="690" y="360" font-size="13" fill="#475569">500m</text>`);
@@ -350,7 +458,17 @@ function drawRanges() {
     strokeStyle: "dashed",
     zIndex: 60
   });
-  polygons = [core, circle500, circle1000];
+  const districts = Object.entries(dataset.meta.businessDistrictPolygons || {}).map(([name, path]) => new AMap.Polygon({
+    path,
+    fillColor: DISTRICT_COLORS[name] || "#5A6ACF",
+    fillOpacity: 0.08,
+    strokeColor: DISTRICT_COLORS[name] || "#5A6ACF",
+    strokeWeight: 2,
+    strokeOpacity: 0.88,
+    strokeStyle: "dashed",
+    zIndex: 90
+  }));
+  polygons = [core, circle500, circle1000, ...districts];
   map.add(polygons);
 }
 
@@ -358,8 +476,17 @@ function activeView() {
   return dataset.analysisViews.find(view => view.id === state.activeViewId) || dataset.analysisViews[0];
 }
 
+function activeDeepTopic() {
+  return DEEP_TOPICS.find(topic => topic.id === state.deepTopic) || DEEP_TOPICS[0];
+}
+
+function activeDeepDimension() {
+  return DEEP_DIMENSIONS.find(dimension => dimension.id === state.deepDimension) || DEEP_DIMENSIONS[0];
+}
+
 function currentPois() {
   if (state.mode === "analysis") return poisForAnalysisView(activeView());
+  if (state.mode === "deep") return poisForDeepView();
   return filteredPois();
 }
 
@@ -389,6 +516,20 @@ function poisForAnalysisView(view) {
   });
 }
 
+function poisForDeepView() {
+  const topic = activeDeepTopic();
+  const dimension = activeDeepDimension();
+  const categoryFilters = topic.categories || dimension.categories || null;
+  return dataset.pois.filter(p => {
+    if (!state.deepDistricts.has(p.businessDistrict || "非重点商圈")) return false;
+    if (state.deepReviewOnly && !p.manualReviewFlag) return false;
+    if (categoryFilters?.length && !categoryFilters.includes(p.category)) return false;
+    if (dimension.id === "cateringSubCategory" && p.category !== "餐饮") return false;
+    if (dimension.id === "shoppingSubCategory" && p.category !== "购物") return false;
+    return true;
+  });
+}
+
 function render() {
   const pois = currentPois();
   renderMarkers(pois);
@@ -414,7 +555,7 @@ function renderMarkers(pois) {
     const color = colorForPoi(p, view);
     const marker = new AMap.CircleMarker({
       center: [p.lon, p.lat],
-      radius: p.range === "core_polygon" ? 5.4 : state.mode === "analysis" ? 4.2 : 3.6,
+      radius: p.range === "core_polygon" ? 5.4 : state.mode === "analysis" || state.mode === "deep" ? 4.2 : 3.6,
       strokeColor: "#ffffff",
       strokeWeight: 1,
       strokeOpacity: 0.88,
@@ -450,7 +591,7 @@ function renderStaticMarkers(pois, showPoints) {
 }
 
 function renderHeat(pois) {
-  const showHeat = state.mode === "analysis" ? activeView().showHeat === true : state.showHeat;
+  const showHeat = state.mode === "analysis" ? activeView().showHeat === true : state.mode === "deep" ? false : state.showHeat;
   if (mapMode === "static") {
     renderStaticHeat(pois, showHeat);
     return;
@@ -579,34 +720,82 @@ function clearAnnotations() {
   }
 }
 
+function closeMapPopup() {
+  if (infoWindow) {
+    infoWindow.close();
+  }
+  if (staticPopup) {
+    staticPopup.classList.add("hidden");
+  }
+}
+
 function showPopup(p) {
   if (mapMode === "static") return;
-  const info = new AMap.InfoWindow({
+  const deepTags = deepTagHtml(p);
+  const reviewInfo = manualReviewHtml(p);
+  infoWindow = new AMap.InfoWindow({
     isCustom: false,
     content: `<div class="poi-popup">
       <h3>${escapeHtml(p.name)}</h3>
       <p><strong>${escapeHtml(p.category)}</strong> · ${escapeHtml(p.rangeLabel)}</p>
+      ${p.subCategory ? `<p>${escapeHtml(p.subCategory)} · ${escapeHtml(p.businessDistrict || "")}</p>` : ""}
       <p>${escapeHtml(p.type || "")}</p>
       <p>${escapeHtml(p.address || "地址未返回")}</p>
       <p>距中心约 ${Math.round(p.distance)} m</p>
+      ${deepTags}
+      ${reviewInfo}
     </div>`,
     offset: new AMap.Pixel(0, -4)
   });
-  info.open(map, [p.lon, p.lat]);
+  infoWindow.open(map, [p.lon, p.lat]);
 }
 
 function showStaticPopup(p, event) {
   const rect = document.getElementById("map").getBoundingClientRect();
+  const deepTags = deepTagHtml(p);
+  const reviewInfo = manualReviewHtml(p);
   staticPopup.innerHTML = `<div class="poi-popup">
     <h3>${escapeHtml(p.name)}</h3>
     <p><strong>${escapeHtml(p.category)}</strong> · ${escapeHtml(p.rangeLabel)}</p>
+    ${p.subCategory ? `<p>${escapeHtml(p.subCategory)} · ${escapeHtml(p.businessDistrict || "")}</p>` : ""}
     <p>${escapeHtml(p.type || "")}</p>
     <p>${escapeHtml(p.address || "地址未返回")}</p>
     <p>距中心约 ${Math.round(p.distance)} m</p>
+    ${deepTags}
+    ${reviewInfo}
   </div>`;
   staticPopup.style.left = `${Math.min(event.clientX - rect.left + 12, rect.width - 260)}px`;
   staticPopup.style.top = `${Math.max(event.clientY - rect.top - 20, 12)}px`;
   staticPopup.classList.remove("hidden");
+}
+
+function deepTagHtml(p) {
+  if (!p.subCategory && !p.consumptionLevel && !p.designAction) return "";
+  const tags = [
+    p.consumptionLevel,
+    p.customerType,
+    p.activityTime,
+    p.interfaceLevel,
+    p.designAction,
+    p.manualOverrideApplied ? "已人工修正" : "",
+    p.manualReviewFlag ? "需复核" : ""
+  ].filter(Boolean);
+  return `<div class="tag-row">${tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>`;
+}
+
+function manualReviewHtml(p) {
+  const lines = [];
+  if (p.manualReviewReason) {
+    lines.push(`<strong>${p.manualReviewFlag ? "复核原因" : "原复核原因"}</strong>${escapeHtml(p.manualReviewReason.replaceAll("|", " / "))}`);
+  }
+  if (p.reviewNote) {
+    lines.push(`<strong>人工备注</strong>${escapeHtml(p.reviewNote)}`);
+  }
+  if (!lines.length && !p.manualOverrideApplied) return "";
+  if (p.manualOverrideApplied && !p.reviewNote) {
+    lines.push("<strong>人工状态</strong>已人工修正");
+  }
+  return `<div class="review-note">${lines.join("<br>")}</div>`;
 }
 
 function renderLegend(pois) {
@@ -617,6 +806,11 @@ function renderLegend(pois) {
 }
 
 function renderStats(pois) {
+  if (state.mode === "deep") {
+    renderDeepStats(pois);
+    return;
+  }
+  setMetricLabels(["核心区", "500m", "1000m", "主导业态"]);
   const total = dataset.meta.total || 1;
   const view = state.mode === "analysis" ? activeView() : null;
   const rangeCounts = countBy(pois, "range");
@@ -655,7 +849,57 @@ function renderStats(pois) {
   }
 }
 
+function renderDeepStats(pois) {
+  const topic = activeDeepTopic();
+  const dimension = activeDeepDimension();
+  const field = dimension.field;
+  const statsCounts = statsCounter(pois, null);
+  const sortedStats = Object.entries(statsCounts).sort((a, b) => b[1] - a[1]);
+  const districtCounts = countBy(pois, "businessDistrict");
+  const manualReview = pois.filter(p => p.manualReviewFlag).length;
+  const districtLabel = Array.from(state.deepDistricts).join(" / ");
+  setMetricLabels(["场地内", "东北商圈", "西南商圈", "待确认"]);
+  document.getElementById("statModeLabel").textContent = topic.label;
+  document.getElementById("currentCount").textContent = pois.length;
+  document.getElementById("currentShare").textContent = `${dimension.label} · ${districtLabel}${state.deepReviewOnly ? " · 只看待复核" : ""}`;
+  document.getElementById("metricCore").textContent = districtCounts["场地内"] || 0;
+  document.getElementById("metric500").textContent = districtCounts["东北商圈"] || 0;
+  document.getElementById("metric1000").textContent = districtCounts["西南商圈"] || 0;
+  document.getElementById("metricTop").textContent = manualReview;
+  document.getElementById("barTitle").textContent = `${dimension.label} Top`;
+  const max = sortedStats[0] ? sortedStats[0][1] : 1;
+  document.getElementById("barList").innerHTML = sortedStats.slice(0, 10).map(([key, count]) => {
+    const color = colorForDeepValue(key, field);
+    return `<div>
+      <div class="bar-head"><span>${escapeHtml(key)}</span><strong>${count}</strong></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${count / max * 100}%; background:${color}"></div></div>
+    </div>`;
+  }).join("");
+  document.getElementById("insightText").textContent = `${topic.description} ${topic.insight}`;
+  document.getElementById("drawingTips").innerHTML = renderDistrictCompare(pois, field, manualReview);
+}
+
+function renderDistrictCompare(pois, field, manualReview) {
+  const districts = ["场地内", "东北商圈", "西南商圈"].filter(d => state.deepDistricts.has(d));
+  const cards = districts.map(district => {
+    const items = pois.filter(p => p.businessDistrict === district);
+    const top = Object.entries(countBy(items, field)).sort((a, b) => b[1] - a[1])[0];
+    return `<div class="district-card">
+      <strong>${escapeHtml(district)}</strong><em>${items.length}</em>
+      <span>主导项</span><span>${top ? `${escapeHtml(top[0])} ${top[1]}` : "-"}</span>
+    </div>`;
+  }).join("");
+  return `<div class="district-compare">${cards}</div><span class="review-chip">待人工确认 ${manualReview} 条</span>`;
+}
+
+function setMetricLabels(labels) {
+  document.querySelectorAll(".metric-grid span").forEach((node, index) => {
+    if (labels[index]) node.textContent = labels[index];
+  });
+}
+
 function statsCounter(pois, view) {
+  if (state.mode === "deep") return countBy(pois, activeDeepDimension().field);
   if (!view) return countBy(pois, "category");
   if (view.colorBy === "range") {
     return pois.reduce((acc, p) => {
@@ -677,6 +921,13 @@ function statsCounter(pois, view) {
 
 function currentLegendItems(pois) {
   const view = state.mode === "analysis" ? activeView() : null;
+  if (state.mode === "deep") {
+    const dimension = activeDeepDimension();
+    return Object.entries(countBy(pois, dimension.field))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([label]) => ({ label, color: colorForDeepValue(label, dimension.field) }));
+  }
   if (view?.legend?.length) return view.legend;
   if (view?.colorBy === "range") {
     return [
@@ -698,6 +949,10 @@ function currentLegendItems(pois) {
 }
 
 function colorForPoi(p, view) {
+  if (state.mode === "deep") {
+    const dimension = activeDeepDimension();
+    return colorForDeepValue(p[dimension.field], dimension.field);
+  }
   if (view?.colorBy === "range") return RANGE_COLORS[p.range] || "#9CA3AF";
   if (view?.colorBy === "visitorDaily") return VISITOR_COLORS[p.visitorDaily] || VISITOR_COLORS["其他"];
   if (view?.colorBy === "group") return GROUP_COLORS[primaryGroup(p, view)] || "#9CA3AF";
@@ -705,6 +960,7 @@ function colorForPoi(p, view) {
 }
 
 function colorForStatKey(key, view) {
+  if (state.mode === "deep") return colorForDeepValue(key, activeDeepDimension().field);
   if (!view) return dataset.meta.categoryColors[key] || "#9CA3AF";
   if (view.colorBy === "range") {
     const rangeEntry = Object.entries({
@@ -722,19 +978,39 @@ function colorForStatKey(key, view) {
   return dataset.meta.categoryColors[key] || "#9CA3AF";
 }
 
+function colorForDeepValue(value, field) {
+  const label = value || "未分类";
+  if (field === "category") return dataset.meta.categoryColors[label] || "#9CA3AF";
+  const fieldColors = dataset.meta.deepFieldColors || {};
+  const palette = fieldColors[field] || fieldColors[toCamelField(field)] || {};
+  if (palette[label]) return palette[label];
+  let hash = 0;
+  for (const char of label) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return FALLBACK_PALETTE[hash % FALLBACK_PALETTE.length];
+}
+
+function toCamelField(field) {
+  return {
+    businessDistrict: "businessDistrict",
+    consumptionLevel: "consumptionLevel",
+    customerType: "customerType",
+    designAction: "designAction"
+  }[field] || field;
+}
+
 function primaryGroup(p, view) {
   const preferred = view?.filters?.groups || ["commercial_vitality", "public_service", "mobility", "tourism", "daily_life"];
   return preferred.find(group => p.analysisGroups.includes(group)) || p.analysisGroups[0] || "other";
 }
 
 function resetView() {
-  if (mapMode === "amap") {
+  if (mapMode === "amap" && map) {
     map.setZoomAndCenter(15.8, dataset.meta.center);
   }
 }
 
 function fitActiveView() {
-  if (mapMode !== "amap") return;
+  if (mapMode !== "amap" || !map) return;
   const view = activeView();
   const pois = poisForAnalysisView(view);
   if (!pois.length) {
@@ -746,6 +1022,18 @@ function fitActiveView() {
   if (points.length < 4) {
     resetView();
   }
+}
+
+function fitDeepView() {
+  if (mapMode !== "amap" || state.mode !== "deep" || !map) return;
+  const pois = poisForDeepView();
+  if (!pois.length) {
+    resetView();
+    return;
+  }
+  const points = pois.slice(0, 900).map(p => [p.lon, p.lat]);
+  map.setFitView(null, false, [80, 80, 80, 80]);
+  if (points.length < 4) resetView();
 }
 
 async function exportCurrentMap() {
@@ -813,8 +1101,9 @@ async function composeExportImage(dataUrl, pois) {
 
 function drawExportOverlay(ctx, width, height, pois) {
   const view = state.mode === "analysis" ? activeView() : null;
-  const title = view ? view.title : "POI筛选模式";
-  const subtitle = view ? view.description : TOPICS.find(t => t.id === state.topic)?.label || "全部 POI";
+  const deepTopic = state.mode === "deep" ? activeDeepTopic() : null;
+  const title = deepTopic ? `深层业态模式 · ${deepTopic.label}` : view ? view.title : "POI筛选模式";
+  const subtitle = deepTopic ? `${activeDeepDimension().label} · ${deepTopic.description}` : view ? view.description : TOPICS.find(t => t.id === state.topic)?.label || "全部 POI";
   const scale = Math.max(1, width / 1280);
   const pad = 18 * scale;
   const panelWidth = Math.min(width - pad * 2, 560 * scale);
@@ -908,7 +1197,7 @@ function downloadDataUrl(dataUrl, filename) {
 }
 
 function exportFilename() {
-  const view = state.mode === "analysis" ? activeView()?.id : state.topic;
+  const view = state.mode === "analysis" ? activeView()?.id : state.mode === "deep" ? `${state.deepTopic}-${state.deepDimension}` : state.topic;
   const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "-");
   return `dongqian-poi-${state.mode}-${view}-${timestamp}.png`;
 }
@@ -919,7 +1208,8 @@ function sortedCategories() {
 
 function countBy(items, key) {
   return items.reduce((acc, item) => {
-    acc[item[key]] = (acc[item[key]] || 0) + 1;
+    const value = item[key] || "未分类";
+    acc[value] = (acc[value] || 0) + 1;
     return acc;
   }, {});
 }

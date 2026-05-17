@@ -24,6 +24,7 @@
         <div class="mode-switch" id="modeSwitch">
           <button type="button" class="active" data-mode="filter">POI筛选模式</button>
           <button type="button" data-mode="analysis">图纸专题模式</button>
+          <button type="button" data-mode="deep">深层业态模式</button>
         </div>
       </section>
 
@@ -55,6 +56,30 @@
         <section class="control-block">
           <h2>专题说明</h2>
           <p class="mode-note" id="analysisNote"></p>
+        </section>
+      </div>
+
+      <div id="deepControls" hidden>
+        <section class="control-block">
+          <h2>深层专题</h2>
+          <div class="analysis-list" id="deepTopicList"></div>
+        </section>
+        <section class="control-block">
+          <h2>对比对象</h2>
+          <div class="check-list" id="districtFilters"></div>
+        </section>
+        <section class="control-block">
+          <h2>分析维度</h2>
+          <div class="deep-dimension-grid" id="deepDimensionGrid"></div>
+        </section>
+        <section class="control-block">
+          <h2>人工复核</h2>
+          <label class="check-row review-only-row">
+            <input type="checkbox" id="deepReviewOnlyToggle" />
+            <span class="swatch" style="background:#9a3412"></span>
+            <span>只看待复核</span>
+            <span class="count" id="deepReviewTotal">0</span>
+          </label>
         </section>
       </div>
     </aside>
